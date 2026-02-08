@@ -39,10 +39,18 @@ if (!browser.tabs.executeScript) {
       scriptPromise
         .then(results => {
           console.log('[SHIM] chrome.scripting.executeScript returned:', results);
-          // Convert V3 result format [{result: value}] to V2 format [value]
-          const returnValue = results ? results.map(r => r.result) : [];
-          console.log('[SHIM] Resolving with:', returnValue);
-          resolve(returnValue);
+          try {
+            // Convert V3 result format [{result: value}] to V2 format [value]
+            console.log('[SHIM] Mapping results...');
+            const returnValue = results ? results.map(r => r.result) : [];
+            console.log('[SHIM] Mapped to:', returnValue);
+            console.log('[SHIM] Calling resolve()...');
+            resolve(returnValue);
+            console.log('[SHIM] resolve() called successfully');
+          } catch (error) {
+            console.error('[SHIM] Error in .then() handler:', error);
+            reject(error);
+          }
         })
         .catch(error => {
           console.error('[SHIM] executeScript FAILED:', error);
