@@ -158,9 +158,11 @@ const clipSite = id => {
 }
 
 // inject the necessary scripts
+console.log('[POPUP] Popup script loading...');
 browser.storage.sync.get(defaultOptions).then(options => {
+    console.log('[POPUP] Got default options');
     checkInitialSettings(options);
-    
+
     document.getElementById("selected").addEventListener("click", (e) => {
         e.preventDefault();
         toggleClipSelection(options);
@@ -177,14 +179,17 @@ browser.storage.sync.get(defaultOptions).then(options => {
         e.preventDefault();
         toggleDownloadImages(options);
     });
-    
+
+    console.log('[POPUP] Querying for active tab...');
     return browser.tabs.query({
         currentWindow: true,
         active: true
     });
 }).then((tabs) => {
+    console.log('[POPUP] Got tabs:', tabs);
     var id = tabs[0].id;
     var url = tabs[0].url;
+    console.log('[POPUP] Injecting scripts into tab:', id);
     browser.tabs.executeScript(id, {
         file: "/browser-polyfill.min.js"
     })
