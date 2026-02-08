@@ -1,25 +1,34 @@
 // Manifest V3 compatibility shim for executeScript
 if (!browser.tabs.executeScript) {
   browser.tabs.executeScript = async function(tabId, details) {
-    let results;
-    if (details.code) {
-      // For code execution, create a function that evaluates the code
-      const code = details.code;
-      results = await chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        func: function(codeStr) {
-          return eval(codeStr);
-        },
-        args: [code]
-      });
-    } else if (details.file) {
-      results = await chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        files: [details.file]
-      });
+    console.log('[SHIM] executeScript called with:', details);
+    try {
+      let results;
+      if (details.code) {
+        // For code execution, create a function that evaluates the code
+        const code = details.code;
+        console.log('[SHIM] Executing code...');
+        results = await chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          func: function(codeStr) {
+            return eval(codeStr);
+          },
+          args: [code]
+        });
+      } else if (details.file) {
+        console.log('[SHIM] Injecting file:', details.file);
+        results = await chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          files: [details.file]
+        });
+      }
+      console.log('[SHIM] executeScript completed, results:', results);
+      // Convert V3 result format [{result: value}] to V2 format [value]
+      return results ? results.map(r => r.result) : [];
+    } catch (error) {
+      console.error('[SHIM] executeScript FAILED:', error);
+      throw error;
     }
-    // Convert V3 result format [{result: value}] to V2 format [value]
-    return results ? results.map(r => r.result) : [];
   };
 }
 
