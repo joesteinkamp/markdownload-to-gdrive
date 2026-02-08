@@ -1,5 +1,7 @@
 // Manifest V3 compatibility shim for executeScript
 console.log('[SHIM] browser exists?', typeof browser);
+console.log('[SHIM] chrome exists?', typeof chrome);
+console.log('[SHIM] chrome.scripting exists?', typeof chrome?.scripting);
 console.log('[SHIM] browser.tabs exists?', typeof browser?.tabs);
 console.log('[SHIM] browser.tabs.executeScript exists?', typeof browser.tabs.executeScript);
 if (!browser.tabs.executeScript) {
@@ -21,10 +23,15 @@ if (!browser.tabs.executeScript) {
         });
       } else if (details.file) {
         console.log('[SHIM] Injecting file:', details.file);
+        if (!chrome.scripting) {
+          throw new Error('chrome.scripting is not available!');
+        }
+        console.log('[SHIM] Calling chrome.scripting.executeScript...');
         results = await chrome.scripting.executeScript({
           target: { tabId: tabId },
           files: [details.file]
         });
+        console.log('[SHIM] chrome.scripting.executeScript returned:', results);
       }
       console.log('[SHIM] executeScript completed, results:', results);
       // Convert V3 result format [{result: value}] to V2 format [value]
