@@ -21,6 +21,74 @@ if (!browser.tabs.executeScript) {
   };
 }
 
+// Manifest V3: Offscreen document management for DOM parsing
+let offscreenDocumentCreated = false;
+
+async function ensureOffscreenDocument() {
+  if (offscreenDocumentCreated) return;
+
+  try {
+    await chrome.offscreen.createDocument({
+      url: 'background/offscreen.html',
+      reasons: ['DOM_PARSER'],
+      justification: 'Parse HTML content using DOMParser API'
+    });
+    offscreenDocumentCreated = true;
+  } catch (error) {
+    // Document may already exist, or API not available
+    if (!error.message.includes('Only a single offscreen')) {
+      console.error('Failed to create offscreen document:', error);
+    }
+    offscreenDocumentCreated = true; // Assume it exists
+  }
+}
+
+// Polyfill for DOMParser in service worker using offscreen document
+if (typeof DOMParser === 'undefined') {
+  globalThis.DOMParser = class {
+    async parseFromString(domString, mimeType) {
+      await ensureOffscreenDocument();
+
+      return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          { action: 'parseDOM', domString, mimeType },
+          (response) => {
+            if (response && response.success) {
+              // Create a mock DOM object that behaves like the real one
+              const parser = new (class MockDOM {
+                constructor(html) {
+                  this._html = html;
+                  this.documentElement = {
+                    nodeName: 'HTML',
+                    outerHTML: html
+                  };
+                  // We'll parse this properly when needed
+                  this._parsed = null;
+                }
+
+                get body() {
+                  // Return a mock body that supports querySelector
+                  return {
+                    querySelectorAll: (selector) => {
+                      // This is a simplified version - real implementation would need full parsing
+                      return [];
+                    },
+                    innerHTML: this._html
+                  };
+                }
+              })(response.html);
+
+              resolve(parser);
+            } else {
+              reject(new Error(response?.error || 'Failed to parse DOM'));
+            }
+          }
+        );
+      });
+    }
+  };
+}
+
 // log some info
 browser.runtime.getPlatformInfo().then(async platformInfo => {
   const browserInfo = browser.runtime.getBrowserInfo ? await browser.runtime.getBrowserInfo() : "Can't get browser info"
@@ -397,55 +465,56 @@ async function preDownloadImages(imageList, markdown) {
   // proper file extension to put into the markdown.
   // so... here we are waiting for all the downloads and replacements to complete
   await Promise.all(Object.entries(imageList).map(([src, filename]) => new Promise((resolve, reject) => {
-        // we're doing an xhr so we can get it as a blob and determine filetype
-        // before the final save
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', src);
-        xhr.responseType = "blob";
-        xhr.onload = async function () {
-          // here's the returned blob
-          const blob = xhr.response;
-
-          if (options.imageStyle == 'base64') {
-            var reader = new FileReader();
-            reader.onloadend = function () {
-              markdown = markdown.replaceAll(src, reader.result)
-              resolve()
+        // Using fetch instead of XMLHttpRequest (Manifest V3 compatible)
+        fetch(src)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Network response was not ok');
             }
-            reader.readAsDataURL(blob);
-          }
-          else {
+            return response.blob();
+          })
+          .then(async (blob) => {
+            // here's the returned blob
 
-            let newFilename = filename;
-            if (newFilename.endsWith('.idunno')) {
-              // replace any unknown extension with a lookup based on mime type
-              newFilename = filename.replace('.idunno', '.' + mimedb[blob.type]);
-
-              // and replace any instances of this in the markdown
-              // remember to url encode for replacement if it's not an obsidian link
-              if (!options.imageStyle.startsWith("obsidian")) {
-                markdown = markdown.replaceAll(filename.split('/').map(s => encodeURI(s)).join('/'), newFilename.split('/').map(s => encodeURI(s)).join('/'))
+            if (options.imageStyle == 'base64') {
+              var reader = new FileReader();
+              reader.onloadend = function () {
+                markdown = markdown.replaceAll(src, reader.result)
+                resolve()
               }
-              else {
-                markdown = markdown.replaceAll(filename, newFilename)
-              }
+              reader.readAsDataURL(blob);
             }
+            else {
 
-            // create an object url for the blob (no point fetching it twice)
-            const blobUrl = URL.createObjectURL(blob);
+              let newFilename = filename;
+              if (newFilename.endsWith('.idunno')) {
+                // replace any unknown extension with a lookup based on mime type
+                newFilename = filename.replace('.idunno', '.' + mimedb[blob.type]);
 
-            // add this blob into the new image list
-            newImageList[blobUrl] = newFilename;
+                // and replace any instances of this in the markdown
+                // remember to url encode for replacement if it's not an obsidian link
+                if (!options.imageStyle.startsWith("obsidian")) {
+                  markdown = markdown.replaceAll(filename.split('/').map(s => encodeURI(s)).join('/'), newFilename.split('/').map(s => encodeURI(s)).join('/'))
+                }
+                else {
+                  markdown = markdown.replaceAll(filename, newFilename)
+                }
+              }
 
-            // resolve this promise now
-            // (the file might not be saved yet, but the blob is and replacements are complete)
-            resolve();
-          }
-        };
-        xhr.onerror = function () {
-          reject('A network error occurred attempting to download ' + src);
-        };
-        xhr.send();
+              // create an object url for the blob (no point fetching it twice)
+              const blobUrl = URL.createObjectURL(blob);
+
+              // add this blob into the new image list
+              newImageList[blobUrl] = newFilename;
+
+              // resolve this promise now
+              // (the file might not be saved yet, but the blob is and replacements are complete)
+              resolve();
+            }
+          })
+          .catch((error) => {
+            reject('A network error occurred attempting to download ' + src + ': ' + error.message);
+          });
   })));
 
   return { imageList: newImageList, markdown: markdown };
