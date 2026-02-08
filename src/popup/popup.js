@@ -202,11 +202,13 @@ browser.storage.sync.get(defaultOptions).then(options => {
     browser.tabs.executeScript(id, {
         file: "/browser-polyfill.min.js"
     })
-    .then(() => {
+    .then((result) => {
+        console.log('[POPUP] First script injected, result:', result);
         return browser.tabs.executeScript(id, {
             file: "/contentScript/contentScript.js"
         });
-    }).then( () => {
+    }).then((result) => {
+        console.log('[POPUP] Second script injected, result:', result);
         console.info("Successfully injected MarkDownload content script");
         return clipSite(id);
     }).catch( (error) => {
