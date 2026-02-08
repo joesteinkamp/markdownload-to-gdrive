@@ -229,10 +229,14 @@ browser.storage.sync.get(defaultOptions).then(options => {
     var id = tabs[0].id;
     var url = tabs[0].url;
     console.log('[POPUP] Injecting scripts into tab:', id);
+    console.log('[POPUP] browser.tabs.executeScript is:', browser.tabs.executeScript);
+    console.log('[POPUP] Is it our shim?', browser.tabs.executeScript.toString().includes('SHIM'));
     const promise1 = browser.tabs.executeScript(id, {
         file: "/browser-polyfill.min.js"
     });
     console.log('[POPUP] executeScript returned:', promise1, 'type:', typeof promise1);
+    console.log('[POPUP] Promise constructor:', promise1?.constructor?.name);
+    console.log('[POPUP] Has .then?', typeof promise1?.then);
     console.log('[POPUP] Attaching .then() handler...');
     promise1.then((result) => {
         console.log('[POPUP] .then() FIRED! Result:', result);
