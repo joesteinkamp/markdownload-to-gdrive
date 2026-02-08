@@ -20,6 +20,10 @@ const saveOptions = e => {
         obsidianIntegration: document.querySelector("[name='obsidianIntegration']").checked,
         obsidianVault: document.querySelector("[name='obsidianVault']").value,
         obsidianFolder: document.querySelector("[name='obsidianFolder']").value,
+        gdriveEnabled: document.querySelector("[name='gdriveEnabled']").checked,
+        gdriveConnected: options.gdriveConnected || false,
+        gdriveFolderId: document.querySelector("[name='gdriveFolderId']").value,
+        gdriveFallbackToDownload: document.querySelector("[name='gdriveFallbackToDownload']").checked,
 
         headingStyle: getCheckedValue(document.querySelectorAll("input[name='headingStyle']")),
         hr: getCheckedValue(document.querySelectorAll("input[name='hr']")),
@@ -124,6 +128,9 @@ const setCurrentChoice = result => {
     document.querySelector("[name='obsidianIntegration']").checked = options.obsidianIntegration;
     document.querySelector("[name='obsidianVault']").value = options.obsidianVault;
     document.querySelector("[name='obsidianFolder']").value = options.obsidianFolder;
+    document.querySelector("[name='gdriveEnabled']").checked = options.gdriveEnabled;
+    document.querySelector("[name='gdriveFolderId']").value = options.gdriveFolderId;
+    document.querySelector("[name='gdriveFallbackToDownload']").checked = options.gdriveFallbackToDownload;
 
     setCheckedValue(document.querySelectorAll("[name='headingStyle']"), options.headingStyle);
     setCheckedValue(document.querySelectorAll("[name='hr']"), options.hr);
@@ -138,6 +145,9 @@ const setCurrentChoice = result => {
     setCheckedValue(document.querySelectorAll("[name='imageRefStyle']"), options.imageRefStyle);
     setCheckedValue(document.querySelectorAll("[name='downloadMode']"), options.downloadMode);
     // setCheckedValue(document.querySelectorAll("[name='obsidianPathType']"), options.obsidianPathType);
+
+    // Update Google Drive connection status
+    updateGoogleDriveStatus();
 
     refereshElements();
 }
@@ -186,7 +196,11 @@ const refereshElements = () => {
     document.getElementById('obsidian').disabled = !downloadImages;
     document.getElementById('obsidian-nofolder').disabled = !downloadImages;
 
-    
+    // Show/hide Google Drive settings
+    const gdriveSettings = document.getElementById("gdriveSettings");
+    if (gdriveSettings) {
+        gdriveSettings.style.display = options.gdriveEnabled ? "block" : "none";
+    }
 }
 
 const inputChange = e => {
@@ -228,7 +242,7 @@ const inputKeyup = (e) => {
     keyupTimeout = setTimeout(inputChange, 500, e);
 }
 
-const buttonClick = (e) => {
+const buttonClick = async (e) => {
     if (e.target.id == "import") {
         document.getElementById("import-file").click();
     }
@@ -245,6 +259,12 @@ const buttonClick = (e) => {
             saveAs: true,
             filename: `MarkDownload-export-${datestring}.json`
         });
+    }
+    else if (e.target.id == "gdriveConnect") {
+        await handleGoogleDriveConnect();
+    }
+    else if (e.target.id == "gdriveDisconnect") {
+        await handleGoogleDriveDisconnect();
     }
 }
 
@@ -310,4 +330,83 @@ function setCheckedValue(radioObj, newValue) {
             radioObj[i].checked = true;
         }
     }
+}
+
+// Google Drive Integration Functions
+async function handleGoogleDriveConnect() {
+    try {
+        // Send message to background script to authenticate
+        const response = await browser.runtime.sendMessage({
+            action: 'gdriveAuthenticate'
+        });
+
+        if (response.success) {
+            options.gdriveConnected = true;
+            save();
+            updateGoogleDriveStatus();
+            showStatus('Successfully connected to Google Drive', 'success');
+        } else {
+            showStatus('Failed to connect: ' + (response.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Google Drive connection error:', error);
+        showStatus('Connection error: ' + error.message, 'error');
+    }
+}
+
+async function handleGoogleDriveDisconnect() {
+    try {
+        // Send message to background script to revoke access
+        const response = await browser.runtime.sendMessage({
+            action: 'gdriveRevoke'
+        });
+
+        if (response.success) {
+            options.gdriveConnected = false;
+            options.gdriveFolderId = '';
+            document.querySelector("[name='gdriveFolderId']").value = '';
+            save();
+            updateGoogleDriveStatus();
+            showStatus('Disconnected from Google Drive', 'success');
+        } else {
+            showStatus('Failed to disconnect: ' + (response.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Google Drive disconnect error:', error);
+        showStatus('Disconnect error: ' + error.message, 'error');
+    }
+}
+
+async function updateGoogleDriveStatus() {
+    const statusText = document.getElementById('gdriveStatusText');
+    const connectBtn = document.getElementById('gdriveConnect');
+    const disconnectBtn = document.getElementById('gdriveDisconnect');
+
+    if (!statusText || !connectBtn || !disconnectBtn) return;
+
+    if (options.gdriveConnected) {
+        statusText.textContent = 'Connected';
+        statusText.style.color = '#28a745';
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'inline-block';
+    } else {
+        statusText.textContent = 'Not connected';
+        statusText.style.color = '#dc3545';
+        connectBtn.style.display = 'inline-block';
+        disconnectBtn.style.display = 'none';
+    }
+}
+
+function showStatus(message, type) {
+    document.querySelectorAll(".status").forEach(statusEl => {
+        statusEl.textContent = message;
+        statusEl.classList.remove('success', 'error');
+        statusEl.classList.add(type);
+        statusEl.style.opacity = 1;
+    });
+    setTimeout(() => {
+        document.querySelectorAll(".status").forEach(statusEl => {
+            statusEl.style.opacity = 0;
+        });
+    }, 5000);
 }

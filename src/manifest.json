@@ -18,7 +18,9 @@
     "downloads",
     "storage",
     "contextMenus",
-    "clipboardWrite"
+    "clipboardWrite",
+    "identity",
+    "notifications"
   ],
   "browser_action": {
     "default_title": "MarkDownload",
@@ -40,6 +42,8 @@
       "/background/Readability.js",
       "shared/context-menus.js",
       "shared/default-options.js",
+      "background/gdrive-auth.js",
+      "background/gdrive-upload.js",
       "background/background.js"
     ]
   },
@@ -92,5 +96,12 @@
       "id": "{1c5e4c6f-5530-49a3-b216-31ce7d744db0}",
       "strict_min_version": "65.0"
     }
-  }
+  },
+  "oauth2": {
+    "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.file"
+    ]
+  },
+  "key": "YOUR_EXTENSION_KEY_HERE"
 }

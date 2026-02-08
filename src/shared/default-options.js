@@ -26,6 +26,10 @@ const defaultOptions = {
   obsidianIntegration: false,
   obsidianVault: "",
   obsidianFolder: "",
+  gdriveEnabled: false,
+  gdriveConnected: false,
+  gdriveFolderId: '',
+  gdriveFallbackToDownload: true,
 }
 
 // function to get the options from storage and substitute default options if it fails

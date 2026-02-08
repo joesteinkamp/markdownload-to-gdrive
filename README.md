@@ -20,6 +20,23 @@ The extension is available for [Firefox](https://addons.mozilla.org/en-GB/firefo
 
 [![iTunes App Store](https://img.shields.io/itunes/v/1554029832?label=Safari&logo=safari&style=flat)](https://apple.co/3tcU0pD)
 
+# Google Drive Integration
+
+**NEW**: Automatically upload clipped markdown files directly to Google Drive instead of downloading locally!
+
+MarkDownload now supports one-click upload to Google Drive. Configure a target folder, and all your clipped articles will be saved directly to Google Drive with automatic folder organization support.
+
+**Setup required**: You'll need to configure OAuth 2.0 credentials in Google Cloud Console. See detailed setup instructions: [GOOGLE_DRIVE_SETUP.md](./GOOGLE_DRIVE_SETUP.md)
+
+**Features**:
+- Automatic upload to specified Google Drive folder
+- Support for nested folder structures
+- Automatic fallback to local download on error (optional)
+- Images embedded as base64 in markdown (single file upload)
+- Works with existing mdClipsFolder templates
+
+**Note**: This feature requires Chrome, Edge, or other Chromium-based browsers (uses Chrome Identity API for OAuth).
+
 # Obsidian Integration
 
 For integration with obsidian, you need to install and enable community plugins named "Advanced Obsidian URI". This plugin help us to bypass character limitation in URL. Because it's using clipboard as the source for creating new file.
@@ -28,9 +45,9 @@ More information about Advanced Obsidian URI plugin:  https://vinzent03.github.i
 You need to do some configurations in order to use this integration.
 <details>
   <summary>Steps to follow</summary>
-  
+
   1. Left-Click on the extension
-  2. Click on the gear icon to open the configuration menu  
+  2. Click on the gear icon to open the configuration menu
   3. Scroll down to "Obsidian integration" section and turn "enable obsidian integration" on.
   4. Fill out the form below (Obsidian vault name and Obsidian folder name.)
   5. Right-click on the extension and open the menu
@@ -52,6 +69,8 @@ It uses the following libraries:
 - Manage Downloads: necessary to be able to download the markdown file.
 - Storage: used to save extension options
 - Clipboard: used to copy Markdown to clipboard
+- Identity: used for Google Drive OAuth authentication (optional, only if using Google Drive integration)
+- Notifications: used to show upload status notifications (optional, only if using Google Drive integration)
 
 --- 
 The Common Mark icon courtesy of https://github.com/dcurtis/markdown-mark

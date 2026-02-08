@@ -432,7 +432,24 @@ async function preDownloadImages(imageList, markdown) {
 async function downloadMarkdown(markdown, title, tabId, imageList = {}, mdClipsFolder = '') {
   // get the options
   const options = await getOptions();
-  
+
+  // NEW: Check for Google Drive upload
+  if (options.gdriveEnabled && options.gdriveConnected) {
+    try {
+      await uploadToGoogleDrive(markdown, title, mdClipsFolder, options);
+      showNotification('Success', 'Uploaded to Google Drive: ' + title + '.md');
+      return; // Exit - no local download
+    } catch (error) {
+      console.error('Google Drive upload failed:', error);
+      if (!options.gdriveFallbackToDownload) {
+        showNotification('Upload Failed', error.message);
+        return; // Fail without fallback
+      }
+      // Continue to existing download logic as fallback
+      showNotification('Upload Failed', 'Falling back to local download. ' + error.message);
+    }
+  }
+
   // download via the downloads API
   if (options.downloadMode == 'downloadsApi' && browser.downloads) {
     
@@ -545,7 +562,7 @@ async function notify(message) {
     if (message.selection && message.clipSelection) {
       article.content = message.selection;
     }
-    
+
     // convert the article to markdown
     const { markdown, imageList } = await convertArticleToMarkdown(article);
 
@@ -561,6 +578,26 @@ async function notify(message) {
   // message for triggering download
   else if (message.type == "download") {
     downloadMarkdown(message.markdown, message.title, message.tab.id, message.imageList, message.mdClipsFolder);
+  }
+  // Google Drive authentication request from options page
+  else if (message.action == "gdriveAuthenticate") {
+    try {
+      const token = await authenticateGoogleDrive();
+      return { success: true, token: token };
+    } catch (error) {
+      console.error('Authentication failed:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  // Google Drive disconnect/revoke request from options page
+  else if (message.action == "gdriveRevoke") {
+    try {
+      await revokeAccess();
+      return { success: true };
+    } catch (error) {
+      console.error('Revoke failed:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

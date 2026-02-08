@@ -182,6 +182,49 @@ More information:  <a href="https://vinzent03.github.io/obsidian-advanced-uri/">
 
     <hr>
 
+    <div id="googleDrive">
+        <h2>Google Drive Integration</h2>
+        <p>
+            Automatically upload markdown files to Google Drive instead of downloading locally.
+            <strong>Setup required:</strong> You must configure OAuth 2.0 credentials in Google Cloud Console.
+            <a href="https://github.com/deathau/markdownload#google-drive-setup" target="_blank" rel="noopener noreferrer">View setup instructions</a>
+        </p>
+
+        <div class="checkbox-container" id="gdriveEnabled-container">
+            <input name="gdriveEnabled" id="gdriveEnabled" type="checkbox" />
+            <label for="gdriveEnabled">Enable Google Drive Upload</label>
+        </div>
+
+        <br />
+
+        <div id="gdriveSettings" style="display: none;">
+            <div class="button-container" id="gdriveAuth">
+                <label id="gdriveConnectionStatus">Connection Status: <span id="gdriveStatusText">Not connected</span></label>
+                <br />
+                <button name="gdriveConnect" id="gdriveConnect">Connect to Google Drive</button>
+                <button name="gdriveDisconnect" id="gdriveDisconnect" style="display: none;">Disconnect</button>
+            </div>
+
+            <br />
+
+            <div class="textbox-container" id="gdriveFolderId-container">
+                <label for="gdriveFolderId">Google Drive Folder ID or URL:</label>
+                <input type="text" name="gdriveFolderId" id="gdriveFolderId" role="textbox"
+                       placeholder="Paste folder URL or ID from Google Drive" />
+                <small>Get the folder ID from your Google Drive folder URL: <code>https://drive.google.com/drive/folders/FOLDER_ID_HERE</code></small>
+            </div>
+
+            <br />
+
+            <div class="checkbox-container" id="gdriveFallback-container">
+                <input name="gdriveFallbackToDownload" id="gdriveFallbackToDownload" type="checkbox" />
+                <label for="gdriveFallbackToDownload">Fallback to local download if upload fails</label>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
     <h2>Markdown conversion options</h2>
 
     <div class="radio-container" id="headingStyle">
