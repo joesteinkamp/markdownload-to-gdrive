@@ -1,4 +1,6 @@
 // Manifest V3 compatibility shim for executeScript
+console.log('[SHIM] browser exists?', typeof browser);
+console.log('[SHIM] browser.tabs exists?', typeof browser?.tabs);
 console.log('[SHIM] browser.tabs.executeScript exists?', typeof browser.tabs.executeScript);
 if (!browser.tabs.executeScript) {
   console.log('[SHIM] Creating executeScript shim');
@@ -26,7 +28,9 @@ if (!browser.tabs.executeScript) {
       }
       console.log('[SHIM] executeScript completed, results:', results);
       // Convert V3 result format [{result: value}] to V2 format [value]
-      return results ? results.map(r => r.result) : [];
+      const returnValue = results ? results.map(r => r.result) : [];
+      console.log('[SHIM] Returning:', returnValue);
+      return returnValue;
     } catch (error) {
       console.error('[SHIM] executeScript FAILED:', error);
       throw error;
@@ -203,10 +207,11 @@ browser.storage.sync.get(defaultOptions).then(options => {
     var id = tabs[0].id;
     var url = tabs[0].url;
     console.log('[POPUP] Injecting scripts into tab:', id);
-    browser.tabs.executeScript(id, {
+    const promise1 = browser.tabs.executeScript(id, {
         file: "/browser-polyfill.min.js"
-    })
-    .then((result) => {
+    });
+    console.log('[POPUP] executeScript returned:', promise1, 'type:', typeof promise1);
+    promise1.then((result) => {
         console.log('[POPUP] First script injected, result:', result);
         return browser.tabs.executeScript(id, {
             file: "/contentScript/contentScript.js"
