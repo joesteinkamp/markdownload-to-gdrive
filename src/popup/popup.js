@@ -6,15 +6,17 @@ console.log('[SHIM] browser.tabs exists?', typeof browser?.tabs);
 console.log('[SHIM] browser.tabs.executeScript exists?', typeof browser.tabs.executeScript);
 if (!browser.tabs.executeScript) {
   console.log('[SHIM] Creating executeScript shim');
-  browser.tabs.executeScript = async function(tabId, details) {
+  browser.tabs.executeScript = function(tabId, details) {
     console.log('[SHIM] executeScript called with:', details);
-    try {
-      let results;
+
+    // Return a promise explicitly (not async function)
+    return new Promise((resolve, reject) => {
+      let scriptPromise;
+
       if (details.code) {
-        // For code execution, create a function that evaluates the code
         const code = details.code;
         console.log('[SHIM] Executing code...');
-        results = await chrome.scripting.executeScript({
+        scriptPromise = chrome.scripting.executeScript({
           target: { tabId: tabId },
           func: function(codeStr) {
             return eval(codeStr);
@@ -24,24 +26,29 @@ if (!browser.tabs.executeScript) {
       } else if (details.file) {
         console.log('[SHIM] Injecting file:', details.file);
         if (!chrome.scripting) {
-          throw new Error('chrome.scripting is not available!');
+          reject(new Error('chrome.scripting is not available!'));
+          return;
         }
         console.log('[SHIM] Calling chrome.scripting.executeScript...');
-        results = await chrome.scripting.executeScript({
+        scriptPromise = chrome.scripting.executeScript({
           target: { tabId: tabId },
           files: [details.file]
         });
-        console.log('[SHIM] chrome.scripting.executeScript returned:', results);
       }
-      console.log('[SHIM] executeScript completed, results:', results);
-      // Convert V3 result format [{result: value}] to V2 format [value]
-      const returnValue = results ? results.map(r => r.result) : [];
-      console.log('[SHIM] Returning:', returnValue);
-      return returnValue;
-    } catch (error) {
-      console.error('[SHIM] executeScript FAILED:', error);
-      throw error;
-    }
+
+      scriptPromise
+        .then(results => {
+          console.log('[SHIM] chrome.scripting.executeScript returned:', results);
+          // Convert V3 result format [{result: value}] to V2 format [value]
+          const returnValue = results ? results.map(r => r.result) : [];
+          console.log('[SHIM] Resolving with:', returnValue);
+          resolve(returnValue);
+        })
+        .catch(error => {
+          console.error('[SHIM] executeScript FAILED:', error);
+          reject(error);
+        });
+    });
   };
 } else {
   console.log('[SHIM] browser.tabs.executeScript already exists, NOT creating shim');
