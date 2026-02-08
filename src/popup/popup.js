@@ -1,5 +1,7 @@
 // Manifest V3 compatibility shim for executeScript
+console.log('[SHIM] browser.tabs.executeScript exists?', typeof browser.tabs.executeScript);
 if (!browser.tabs.executeScript) {
+  console.log('[SHIM] Creating executeScript shim');
   browser.tabs.executeScript = async function(tabId, details) {
     console.log('[SHIM] executeScript called with:', details);
     try {
@@ -30,6 +32,8 @@ if (!browser.tabs.executeScript) {
       throw error;
     }
   };
+} else {
+  console.log('[SHIM] browser.tabs.executeScript already exists, NOT creating shim');
 }
 
 // default variables
