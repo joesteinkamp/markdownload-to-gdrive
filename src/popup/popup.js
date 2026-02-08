@@ -121,8 +121,10 @@ const showOrHideClipOption = selection => {
 }
 
 const clipSite = id => {
+    console.log('[POPUP] Starting clipSite for tab:', id);
     return browser.tabs.executeScript(id, { code: "getSelectionAndDom()" })
         .then((result) => {
+            console.log('[POPUP] Received result from content script:', result);
             if (result && result[0]) {
                 showOrHideClipOption(result[0].selection);
                 let message = {
@@ -130,7 +132,9 @@ const clipSite = id => {
                     dom: result[0].dom,
                     selection: result[0].selection
                 }
+                console.log('[POPUP] Sending clip message to background');
                 return browser.storage.sync.get(defaultOptions).then(options => {
+                    console.log('[POPUP] Got options, sending message');
                     browser.runtime.sendMessage({
                         ...message,
                         ...options

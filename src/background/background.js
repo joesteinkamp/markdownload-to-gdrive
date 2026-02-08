@@ -643,11 +643,15 @@ function base64EncodeUnicode(str) {
 
 //function that handles messages from the injected script into the site
 async function notify(message) {
+  console.log('[BACKGROUND] notify() called with message type:', message.type);
   const options = await this.getOptions();
+  console.log('[BACKGROUND] Got options:', options);
   // message for initial clipping of the dom
   if (message.type == "clip") {
+    console.log('[BACKGROUND] Processing clip message');
     // get the article info from the passed in dom
     const article = await getArticleFromDom(message.dom);
+    console.log('[BACKGROUND] Got article from DOM');
 
     // if selection info was passed in (and we're to clip the selection)
     // replace the article content
@@ -801,9 +805,13 @@ async function ensureScripts(tabId) {
 
 // get Readability article info from the dom passed in
 async function getArticleFromDom(domString) {
+  console.log('[BACKGROUND] getArticleFromDom() called');
   // parse the dom
+  console.log('[BACKGROUND] Creating DOMParser...');
   const parser = new DOMParser();
+  console.log('[BACKGROUND] Parsing DOM string...');
   const dom = parser.parseFromString(domString, "text/html");
+  console.log('[BACKGROUND] DOM parsed successfully');
 
   if (dom.documentElement.nodeName == "parsererror") {
     console.error("error while parsing");
