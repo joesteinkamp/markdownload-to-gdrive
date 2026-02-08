@@ -225,7 +225,9 @@ browser.storage.sync.get(defaultOptions).then(options => {
         file: "/browser-polyfill.min.js"
     });
     console.log('[POPUP] executeScript returned:', promise1, 'type:', typeof promise1);
+    console.log('[POPUP] Attaching .then() handler...');
     promise1.then((result) => {
+        console.log('[POPUP] .then() FIRED! Result:', result);
         console.log('[POPUP] First script injected, result:', result);
         return browser.tabs.executeScript(id, {
             file: "/contentScript/contentScript.js"
@@ -235,7 +237,7 @@ browser.storage.sync.get(defaultOptions).then(options => {
         console.info("Successfully injected MarkDownload content script");
         return clipSite(id);
     }).catch( (error) => {
-        console.error(error);
+        console.error('[POPUP] Promise chain caught error:', error);
         showError(error);
     });
 });
