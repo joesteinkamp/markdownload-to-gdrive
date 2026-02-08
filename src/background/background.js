@@ -1,10 +1,12 @@
 // Manifest V3 compatibility shim for executeScript
-if (!browser.tabs.executeScript) {
-  browser.tabs.executeScript = async function(tabId, details) {
-    let results;
+// ALWAYS overwrite - browser-polyfill's Proxy doesn't work in V3
+browser.tabs.executeScript = function(tabId, details) {
+  return new Promise((resolve, reject) => {
+    let scriptPromise;
+
     if (details.code) {
       const code = details.code;
-      results = await chrome.scripting.executeScript({
+      scriptPromise = chrome.scripting.executeScript({
         target: { tabId: tabId },
         func: function(codeStr) {
           return eval(codeStr);
@@ -12,14 +14,22 @@ if (!browser.tabs.executeScript) {
         args: [code]
       });
     } else if (details.file) {
-      results = await chrome.scripting.executeScript({
+      scriptPromise = chrome.scripting.executeScript({
         target: { tabId: tabId },
         files: [details.file]
       });
     }
-    return results ? results.map(r => r.result) : [];
-  };
-}
+
+    scriptPromise
+      .then(results => {
+        const returnValue = results ? results.map(r => r.result) : [];
+        resolve(returnValue);
+      })
+      .catch(error => {
+        reject(error);
+      });
+  });
+};
 
 // Manifest V3: Offscreen document management for DOM parsing
 let offscreenDocumentCreated = false;

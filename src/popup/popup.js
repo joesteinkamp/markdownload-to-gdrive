@@ -1,12 +1,8 @@
 // Manifest V3 compatibility shim for executeScript
-console.log('[SHIM] browser exists?', typeof browser);
-console.log('[SHIM] chrome exists?', typeof chrome);
-console.log('[SHIM] chrome.scripting exists?', typeof chrome?.scripting);
-console.log('[SHIM] browser.tabs exists?', typeof browser?.tabs);
-console.log('[SHIM] browser.tabs.executeScript exists?', typeof browser.tabs.executeScript);
-if (!browser.tabs.executeScript) {
-  console.log('[SHIM] Creating executeScript shim');
-  browser.tabs.executeScript = function(tabId, details) {
+// ALWAYS overwrite browser.tabs.executeScript even if it exists
+// because browser-polyfill's Proxy doesn't work in V3
+console.log('[SHIM] Forcing executeScript shim (overwriting browser-polyfill Proxy)');
+browser.tabs.executeScript = function(tabId, details) {
     console.log('[SHIM] executeScript called with:', details);
 
     // Return a promise explicitly (not async function)
@@ -57,10 +53,7 @@ if (!browser.tabs.executeScript) {
           reject(error);
         });
     });
-  };
-} else {
-  console.log('[SHIM] browser.tabs.executeScript already exists, NOT creating shim');
-}
+};
 
 // default variables
 var selectedText = null;
