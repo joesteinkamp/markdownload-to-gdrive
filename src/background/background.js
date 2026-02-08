@@ -1,3 +1,26 @@
+// Manifest V3 compatibility shim for executeScript
+if (!browser.tabs.executeScript) {
+  browser.tabs.executeScript = async function(tabId, details) {
+    let results;
+    if (details.code) {
+      const code = details.code;
+      results = await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        func: function(codeStr) {
+          return eval(codeStr);
+        },
+        args: [code]
+      });
+    } else if (details.file) {
+      results = await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: [details.file]
+      });
+    }
+    return results ? results.map(r => r.result) : [];
+  };
+}
+
 // log some info
 browser.runtime.getPlatformInfo().then(async platformInfo => {
   const browserInfo = browser.runtime.getBrowserInfo ? await browser.runtime.getBrowserInfo() : "Can't get browser info"

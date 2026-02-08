@@ -1,3 +1,27 @@
+// Manifest V3 compatibility shim for executeScript
+if (!browser.tabs.executeScript) {
+  browser.tabs.executeScript = async function(tabId, details) {
+    let results;
+    if (details.code) {
+      // For code execution, create a function that evaluates the code
+      const code = details.code;
+      results = await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        func: function(codeStr) {
+          return eval(codeStr);
+        },
+        args: [code]
+      });
+    } else if (details.file) {
+      results = await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: [details.file]
+      });
+    }
+    // Convert V3 result format [{result: value}] to V2 format [value]
+    return results ? results.map(r => r.result) : [];
+  };
+}
 
 // default variables
 var selectedText = null;
