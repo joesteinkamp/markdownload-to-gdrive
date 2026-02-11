@@ -1,59 +1,23 @@
-// Manifest V3 compatibility shim for executeScript
-// ALWAYS overwrite browser.tabs.executeScript even if it exists
-// because browser-polyfill's Proxy doesn't work in V3
-console.log('[SHIM] Forcing executeScript shim (overwriting browser-polyfill Proxy)');
-browser.tabs.executeScript = function(tabId, details) {
-    console.log('[SHIM] executeScript called with:', details);
+// Manifest V3 script injection helpers
+// These call chrome.scripting directly, bypassing browser-polyfill's Proxy
+// on browser.tabs which breaks Promise resolution in MV3.
+// Wrapped in Promise.resolve() for browser-polyfill compatibility.
+function injectFile(tabId, filePath) {
+  return Promise.resolve(
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: [filePath]
+    })
+  );
+}
 
-    // Return a promise explicitly (not async function)
-    return new Promise((resolve, reject) => {
-      let scriptPromise;
-
-      if (details.code) {
-        const code = details.code;
-        console.log('[SHIM] Executing code...');
-        scriptPromise = chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          func: function(codeStr) {
-            return eval(codeStr);
-          },
-          args: [code]
-        });
-      } else if (details.file) {
-        console.log('[SHIM] Injecting file:', details.file);
-        if (!chrome.scripting) {
-          reject(new Error('chrome.scripting is not available!'));
-          return;
-        }
-        console.log('[SHIM] Calling chrome.scripting.executeScript...');
-        scriptPromise = chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          files: [details.file]
-        });
-      }
-
-      scriptPromise
-        .then(results => {
-          console.log('[SHIM] chrome.scripting.executeScript returned:', results);
-          try {
-            // Convert V3 result format [{result: value}] to V2 format [value]
-            console.log('[SHIM] Mapping results...');
-            const returnValue = results ? results.map(r => r.result) : [];
-            console.log('[SHIM] Mapped to:', returnValue);
-            console.log('[SHIM] Calling resolve()...');
-            resolve(returnValue);
-            console.log('[SHIM] resolve() called successfully');
-          } catch (error) {
-            console.error('[SHIM] Error in .then() handler:', error);
-            reject(error);
-          }
-        })
-        .catch(error => {
-          console.error('[SHIM] executeScript FAILED:', error);
-          reject(error);
-        });
-    });
-};
+function injectFunc(tabId, func, args) {
+  const opts = { target: { tabId: tabId }, func: func };
+  if (args) opts.args = args;
+  return Promise.resolve(
+    chrome.scripting.executeScript(opts)
+  ).then(results => results ? results.map(r => r.result) : []);
+}
 
 // default variables
 var selectedText = null;
@@ -115,12 +79,12 @@ const toggleIncludeTemplate = options => {
     browser.storage.sync.set(options).then(() => {
         browser.contextMenus.update("toggle-includeTemplate", {
             checked: options.includeTemplate
-        });
-        try {
-            browser.contextMenus.update("tabtoggle-includeTemplate", {
-                checked: options.includeTemplate
-            });
-        } catch { }
+        }).catch(() => {});
+        
+        browser.contextMenus.update("tabtoggle-includeTemplate", {
+            checked: options.includeTemplate
+        }).catch(() => {});
+
         return clipSite()
     }).catch((error) => {
         console.error(error);
@@ -133,12 +97,11 @@ const toggleDownloadImages = options => {
     browser.storage.sync.set(options).then(() => {
         browser.contextMenus.update("toggle-downloadImages", {
             checked: options.downloadImages
-        });
-        try {
-            browser.contextMenus.update("tabtoggle-downloadImages", {
-                checked: options.downloadImages
-            });
-        } catch { }
+        }).catch(() => {});
+        
+        browser.contextMenus.update("tabtoggle-downloadImages", {
+            checked: options.downloadImages
+        }).catch(() => {});
     }).catch((error) => {
         console.error(error);
     });
@@ -153,10 +116,8 @@ const showOrHideClipOption = selection => {
 }
 
 const clipSite = id => {
-    console.log('[POPUP] Starting clipSite for tab:', id);
-    return browser.tabs.executeScript(id, { code: "getSelectionAndDom()" })
+    return injectFunc(id, () => getSelectionAndDom())
         .then((result) => {
-            console.log('[POPUP] Received result from content script:', result);
             if (result && result[0]) {
                 showOrHideClipOption(result[0].selection);
                 let message = {
@@ -164,9 +125,7 @@ const clipSite = id => {
                     dom: result[0].dom,
                     selection: result[0].selection
                 }
-                console.log('[POPUP] Sending clip message to background');
                 return browser.storage.sync.get(defaultOptions).then(options => {
-                    console.log('[POPUP] Got options, sending message');
                     browser.runtime.sendMessage({
                         ...message,
                         ...options
@@ -190,9 +149,7 @@ const clipSite = id => {
 }
 
 // inject the necessary scripts
-console.log('[POPUP] Popup script loading...');
 browser.storage.sync.get(defaultOptions).then(options => {
-    console.log('[POPUP] Got default options');
     checkInitialSettings(options);
 
     document.getElementById("selected").addEventListener("click", (e) => {
@@ -212,39 +169,20 @@ browser.storage.sync.get(defaultOptions).then(options => {
         toggleDownloadImages(options);
     });
 
-    console.log('[POPUP] Querying for active tab...');
     return browser.tabs.query({
         currentWindow: true,
         active: true
     });
 }).then((tabs) => {
-    console.log('[POPUP] Got tabs:', tabs);
     var id = tabs[0].id;
-    var url = tabs[0].url;
-    console.log('[POPUP] Injecting scripts into tab:', id);
-    console.log('[POPUP] browser.tabs.executeScript is:', browser.tabs.executeScript);
-    console.log('[POPUP] Is it our shim?', browser.tabs.executeScript.toString().includes('SHIM'));
-    const promise1 = browser.tabs.executeScript(id, {
-        file: "/browser-polyfill.min.js"
-    });
-    console.log('[POPUP] executeScript returned:', promise1, 'type:', typeof promise1);
-    console.log('[POPUP] Promise constructor:', promise1?.constructor?.name);
-    console.log('[POPUP] Has .then?', typeof promise1?.then);
-    console.log('[POPUP] Attaching .then() handler...');
-    promise1.then((result) => {
-        console.log('[POPUP] .then() FIRED! Result:', result);
-        console.log('[POPUP] First script injected, result:', result);
-        return browser.tabs.executeScript(id, {
-            file: "/contentScript/contentScript.js"
+    injectFile(id, "/browser-polyfill.min.js")
+        .then(() => injectFile(id, "/contentScript/contentScript.js"))
+        .then(() => {
+            console.info("Successfully injected MarkDownload content script");
+            return clipSite(id);
+        }).catch((error) => {
+            showError(error);
         });
-    }).then((result) => {
-        console.log('[POPUP] Second script injected, result:', result);
-        console.info("Successfully injected MarkDownload content script");
-        return clipSite(id);
-    }).catch( (error) => {
-        console.error('[POPUP] Promise chain caught error:', error);
-        showError(error);
-    });
 });
 
 // listen for notifications from the background page

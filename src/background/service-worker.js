@@ -3,13 +3,12 @@
 
 // Import all background scripts using importScripts()
 // This maintains compatibility with the existing codebase structure
+// turndown.js, turndown-plugin-gfm.js, Readability.js are loaded in offscreen.html instead
+// (service worker has no DOM, so DOM-dependent processing happens in offscreen document)
 importScripts(
   '../browser-polyfill.min.js',
   'apache-mime-types.js',
   'moment.min.js',
-  'turndown.js',
-  'turndown-plugin-gfm.js',
-  'Readability.js',
   '../shared/context-menus.js',
   '../shared/default-options.js',
   'gdrive-auth.js',
